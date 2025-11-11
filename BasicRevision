@@ -1,0 +1,19 @@
+
+#Program for reverse a string using slicing
+string_1=input('Enter the string for reverse')
+
+rev_string=string_1[::-1]
+
+print(rev_string)
+
+#Program for reverse of a string using while loop
+string_2=input('Enter String for reverse using while ')
+
+index=len(string_2)-1
+
+reversed_string=''
+while index>=0:
+    reversed_string+=string_2[index]
+    index-=1
+
+print('reversed string is: ',reversed_string)
