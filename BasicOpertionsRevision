@@ -1,0 +1,44 @@
+#Basic Opertions revision 
+
+
+#To check string is palindrom
+
+string='madam'
+if string[0]==string[-1]:
+    print('string is palindrom')
+else:
+    print('string is not palindrom')
+#Count vowels in string
+
+string='automation'
+
+count=0
+
+for i in string:
+    if i in 'aeiouAEIOU':
+       count+=1
+
+print('Count of vowels in the string is :',count)
+
+#Factorial of the number
+
+num=5
+fact=1
+
+while num>0:
+    fact*=num
+    num-=1
+print("Factorial is :",fact)
+
+#Find the largest number in the list
+l=[20,55,66,77,77,665]
+print('Largest number in list is :',max(l))
+
+#Swap two numbers without using a third variable
+
+a=10
+b=20
+print(f'Before swaping a is {a} and b is {b}')
+a,b=b,a
+print('a is swaped out to :',a)
+print('b is swapped out to :',b)
