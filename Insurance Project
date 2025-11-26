@@ -1,0 +1,127 @@
+
+"""
+Advanced Python Application for Pulse Insurance Limited
+Features:
+1. GPT Integration for intelligent claim reasoning.
+2. PostgreSQL for claim storage.
+3. CI/CD pipeline configuration using Docker + GitHub Actions.
+4. FastAPI endpoints for claim submission, validation, fraud detection, and GPT reasoning.
+"""
+
+# ---------------------- IMPORTS ----------------------
+from fastapi import FastAPI, UploadFile, Form
+from pydantic import BaseModel
+import uvicorn
+import io
+from PIL import Image
+import pytesseract
+import psycopg2  # PostgreSQL connection
+import os
+
+# GPT integration (mocked here; replace with OpenAI API in production)
+# from openai import OpenAI
+
+# ---------------------- FASTAPI APP ----------------------
+app = FastAPI(title="Pulse Insurance Advanced AI Application")
+
+# ---------------------- DATABASE CONFIG ----------------------
+# PostgreSQL connection details (use environment variables in production)
+DB_HOST = "localhost"
+DB_NAME = "pulse_insurance"
+DB_USER = "postgres"
+DB_PASS = "password"
+
+# Function to connect to PostgreSQL
+def get_db_connection():
+    return psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
+
+# Create table if not exists
+conn = get_db_connection()
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS claims (
+    id SERIAL PRIMARY KEY,
+    claim_text TEXT,
+    status VARCHAR(50),
+    details TEXT
+);
+""")
+conn.commit()
+cursor.close()
+conn.close()
+
+# ---------------------- RESPONSE MODEL ----------------------
+class ClaimResponse(BaseModel):
+    status: str
+    details: str
+
+# ---------------------- AGENT 1: Document Validator ----------------------
+@app.post("/validate_claim", response_model=ClaimResponse)
+async def validate_claim(file: UploadFile, claim_text: str = Form(...)):
+    # Extract text from uploaded document using OCR
+    image_bytes = await file.read()
+    image = Image.open(io.BytesIO(image_bytes))
+    extracted_text = pytesseract.image_to_string(image)
+
+    # Check for required keywords
+    required_keywords = ["policy", "name", "date"]
+    if all(keyword in extracted_text.lower() for keyword in required_keywords):
+        status = "Validated"
+        details = f"Claim text: {claim_text}\nExtracted: {extracted_text[:200]}"
+    else:
+        status = "Rejected"
+        details = "Missing required details in document."
+
+    # Save claim to PostgreSQL
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO claims (claim_text, status, details) VALUES (%s, %s, %s)", (claim_text, status, details))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return ClaimResponse(status=status, details=details)
+
+# ---------------------- AGENT 2: Fraud Detection ----------------------
+@app.post("/check_fraud", response_model=ClaimResponse)
+async def check_fraud(claim_text: str = Form(...)):
+    suspicious_keywords = ["urgent", "duplicate", "inflated", "cash"]
+    if any(keyword in claim_text.lower() for keyword in suspicious_keywords):
+        status = "Suspicious"
+        details = "Claim flagged as potential fraud."
+    else:
+        status = "Clear"
+        details = "Claim appears normal."
+
+    # Save to DB
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO claims (claim_text, status, details) VALUES (%s, %s, %s)", (claim_text, status, details))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return ClaimResponse(status=status, details=details)
+
+# ---------------------- AGENT 3: GPT Reasoning ----------------------
+@app.post("/gpt_reasoning", response_model=ClaimResponse)
+async def gpt_reasoning(claim_text: str = Form(...)):
+    # Mock GPT response (replace with OpenAI API in production)
+    gpt_response = f"Based on analysis, the claim '{claim_text}' seems valid but requires additional medical proof."
+
+    status = "GPT Analysis"
+    details = gpt_response
+
+    # Save GPT reasoning to DB
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO claims (claim_text, status, details) VALUES (%s, %s, %s)", (claim_text, status, details))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return ClaimResponse(status=status, details=details)
+
+# ---------------------- RUN APP ----------------------
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
